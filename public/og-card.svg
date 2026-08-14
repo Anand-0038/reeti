@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Reeti proofroom</title>
+  <desc id="desc">A cool proof sheet showing a creator decision carried into the next campaign.</desc>
+  <rect width="1200" height="630" fill="#f4f7fa"/>
+  <rect x="54" y="54" width="1092" height="522" fill="#fff" stroke="#18202b" stroke-width="2"/>
+  <path d="M54 146h1092M832 146v430" stroke="#18202b" stroke-width="2"/>
+  <text x="88" y="112" fill="#18202b" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="3">REETI / CONTENT OPERATIONS</text>
+  <text x="88" y="248" fill="#18202b" font-family="Arial, sans-serif" font-size="72" font-weight="700">Your way of working,</text>
+  <text x="88" y="330" fill="#2e5bff" font-family="Arial, sans-serif" font-size="72" font-weight="700">remembered.</text>
+  <path d="M88 398h630" stroke="#18202b" stroke-width="2"/>
+  <text x="88" y="450" fill="#5c6775" font-family="monospace" font-size="22">SOURCE → DECISION → NEXT CAMPAIGN</text>
+  <circle cx="922" cy="254" r="72" fill="#f0d45a"/>
+  <circle cx="922" cy="254" r="26" fill="#2e5bff"/>
+  <path d="M922 142v40M922 326v40M810 254h40M994 254h40" stroke="#18202b" stroke-width="3"/>
+  <text x="876" y="452" fill="#18202b" font-family="monospace" font-size="17">MEMORY MARGIN</text>
+  <text x="876" y="480" fill="#5c6775" font-family="monospace" font-size="14">PROVENANCE / REVIEW / FOLLOW-UP</text>
+</svg>

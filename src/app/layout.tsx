@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 
+const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+const metadataBaseUrl = configuredSiteUrl || "http://localhost:3000";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://reeti.local"),
+  metadataBase: new URL(metadataBaseUrl),
   title: {
     default: "Reeti — Your way of working, remembered",
     template: "%s · Reeti",

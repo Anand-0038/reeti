@@ -635,6 +635,9 @@ select:focus {
   color: var(--ink-soft);
   font-size: 0.88rem;
 }
+.blocked-actions {
+  margin-top: 14px;
+}
 .output-tabs {
   margin-top: 28px;
 }

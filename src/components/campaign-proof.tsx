@@ -9,6 +9,7 @@ interface CampaignProofProps {
   busy: boolean;
   onRefresh: () => Promise<void>;
   onMessage: (message: string, tone?: "info" | "success" | "error") => void;
+  onRetry: (sourceId: string) => Promise<void>;
 }
 
 interface ApiError {
@@ -20,6 +21,7 @@ export default function CampaignProof({
   busy,
   onRefresh,
   onMessage,
+  onRetry,
 }: CampaignProofProps) {
   const [activeTab, setActiveTab] = useState<"x" | "linkedin" | "short_video">("x");
   const [feedbackKind, setFeedbackKind] = useState<"edit" | "reject_angle">("reject_angle");
@@ -140,6 +142,16 @@ export default function CampaignProof({
               key and Mind ID in the ignored `.env` file, then retry. Reeti does not show invented
               drafts.
             </p>
+            <div className="blocked-actions">
+              <button
+                type="button"
+                className="button outline"
+                disabled={busy}
+                onClick={() => onRetry(activeCampaign.sourceId)}
+              >
+                {busy ? "Retrying…" : "Retry generation"}
+              </button>
+            </div>
           </div>
         </div>
       ) : activeCampaign.artifacts?.length ? (

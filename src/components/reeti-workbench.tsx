@@ -64,15 +64,15 @@ export default function ReetiWorkbench() {
     }
   }
 
-  async function buildCampaign() {
-    if (!source) return;
+  async function buildCampaign(sourceId = source?.id) {
+    if (!sourceId) return;
     await withBusy(async () => {
       showMessage("Building campaign through the configured Mind…");
       try {
         const response = await fetch("/api/campaigns", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ sourceId: source.id }),
+          body: JSON.stringify({ sourceId }),
         });
         const payload = (await response.json()) as ApiError & { campaign?: CampaignRecord };
         if (!response.ok)
@@ -256,7 +256,7 @@ export default function ReetiWorkbench() {
                   type="button"
                   className="button primary"
                   disabled={busy}
-                  onClick={buildCampaign}
+                  onClick={() => void buildCampaign()}
                 >
                   {busy ? "Building…" : "Build campaign"}
                 </button>
@@ -280,6 +280,7 @@ export default function ReetiWorkbench() {
                 busy={busy}
                 onRefresh={refresh}
                 onMessage={showMessage}
+                onRetry={buildCampaign}
               />
             </>
           ) : surface === "canon" ? (

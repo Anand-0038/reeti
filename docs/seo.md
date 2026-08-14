@@ -1,9 +1,10 @@
 # SEO and discoverability notes
 
 Reeti is currently a local-first hackathon artifact, so `robots.txt` intentionally disallows
-crawling and the canonical metadata uses a placeholder local base URL. Before any public launch:
+crawling. Local metadata resolves relative social assets against `http://localhost:3000`; no
+public sitemap URL is emitted by default. Before any public launch:
 
-- replace `https://reeti.local` with the verified deployment URL;
+- set `NEXT_PUBLIC_SITE_URL` to the verified deployment URL;
 - change `robots` to allow only the intended public landing route;
 - update the sitemap to the actual canonical URL;
 - provide a real social preview asset and check its dimensions;

@@ -86,12 +86,19 @@ class LiveMindsGateway implements MindsGateway {
         409,
       );
     }
+    if (configured.isEnabled !== true) {
+      throw new ReetiError(
+        "The configured Mind is not enabled on the Builder account.",
+        "MINDS_MIND_DISABLED",
+        409,
+      );
+    }
     await this.client.ensureConversation(this.alias, configured.mindId);
     return {
       mindId: configured.mindId,
       mindName: configured.name ?? "Unnamed Mind",
       alias: this.alias,
-      enabled: configured.isEnabled ?? false,
+      enabled: true,
     };
   }
 

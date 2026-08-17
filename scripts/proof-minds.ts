@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 
 import { createMindsClient } from "@animocabrands/minds-client-lib";
 
+import { inspectPersistenceReply, persistenceProofPassed } from "@/lib/proof";
+
 const projectRoot = process.cwd();
 const scriptPath = fileURLToPath(import.meta.url);
 const alias = process.env.MINDS_CONVERSATION_ALIAS?.trim() || "reeti-proof";
@@ -41,7 +43,14 @@ if (!builderApiKey || !mindId) {
     env: { ...baseEnv, REETI_PROOF_SESSION: "B" },
     encoding: "utf8",
   });
-  const success = sessionA.status === 0 && sessionB.status === 0;
+  const sessionAResult = parseSessionOutput(sessionA.stdout || sessionA.stderr);
+  const sessionBResult = parseSessionOutput(sessionB.stdout || sessionB.stderr);
+  const success = persistenceProofPassed({
+    statusA: sessionA.status,
+    statusB: sessionB.status,
+    sessionA: sessionAResult,
+    sessionB: sessionBResult,
+  });
   const output = {
     status: success ? "passed" : "blocked",
     checkedAt: new Date().toISOString(),
@@ -52,8 +61,8 @@ if (!builderApiKey || !mindId) {
       B: redactSessionOutput(sessionB.stdout || sessionB.stderr),
     },
     note: success
-      ? "Session B ran in a separate process and did not receive Session A preference text from Reeti local storage."
-      : "At least one isolated provider process failed; no persistence claim is valid.",
+      ? "Session B ran in a separate process and returned at least two independent preference signals without Reeti local storage injection."
+      : "The isolated processes did not produce a validated A/B persistence result; no persistence claim is valid.",
   };
   if (success) {
     mkdirSync(dirname(artifactPath), { recursive: true });
@@ -84,10 +93,7 @@ if (!builderApiKey || !mindId) {
   if (outcome.timedOut || !outcome.reply?.messageText)
     throw new Error(`Session ${process.env.REETI_PROOF_SESSION} did not receive a Mind reply.`);
   const reply = outcome.reply.messageText;
-  const normalized = reply.toLowerCase();
-  const rememberedSignal = ["emoji", "urgency", "technical", "specific"].some((term) =>
-    normalized.includes(term),
-  );
+  const { rememberedSignal, rememberedTerms } = inspectPersistenceReply(reply);
   console.log(
     JSON.stringify(
       {
@@ -98,11 +104,21 @@ if (!builderApiKey || !mindId) {
         fingerprint: outcome.reply.fingerprint?.slice(0, 24) ?? null,
         responseHash: createHash("sha256").update(reply).digest("hex"),
         rememberedSignal,
+        rememberedTerms,
       },
       null,
       2,
     ),
   );
+}
+
+function parseSessionOutput(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 function redactSessionOutput(value: string): Record<string, unknown> {

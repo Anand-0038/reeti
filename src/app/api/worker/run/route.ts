@@ -19,7 +19,19 @@ export async function POST(request: Request) {
     if (request.headers.get("x-reeti-worker-secret") !== serverEnv.workerSecret) {
       throw new ReetiError("The worker secret was not accepted.", "WORKER_UNAUTHORIZED", 401);
     }
-    return NextResponse.json({ results: await runDueFollowups() });
+    const mode = request.headers.get("x-reeti-worker-mode")?.trim();
+    if (mode && mode !== "scheduled" && mode !== "manual") {
+      throw new ReetiError(
+        "Worker mode must be either scheduled or manual.",
+        "WORKER_MODE_INVALID",
+        422,
+      );
+    }
+    const manualTrigger = mode !== "scheduled";
+    return NextResponse.json({
+      manualTrigger,
+      results: await runDueFollowups({ manualTrigger }),
+    });
   } catch (error) {
     return errorResponse(error);
   }

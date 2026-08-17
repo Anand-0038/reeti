@@ -195,9 +195,9 @@ export function scheduleCampaignFollowup(campaignId: string, input: unknown) {
   return scheduleFollowup(campaignId, request.dueAt);
 }
 
-export async function runDueFollowups(): Promise<
-  Array<{ followupId: string; status: string; deliveryId?: string; error?: string }>
-> {
+export async function runDueFollowups(
+  options: { manualTrigger: boolean } = { manualTrigger: false },
+): Promise<Array<{ followupId: string; status: string; deliveryId?: string; error?: string }>> {
   const results: Array<{
     followupId: string;
     status: string;
@@ -205,14 +205,14 @@ export async function runDueFollowups(): Promise<
     error?: string;
   }> = [];
   for (const followup of listDueFollowups()) {
-    markFollowupRunning(followup.id);
+    markFollowupRunning(followup.id, options.manualTrigger);
     const campaign = getCampaign(followup.campaignId);
     if (!campaign?.source) {
       const error = "The campaign source no longer exists.";
       markFollowupResult(followup.id, { status: "failed", error });
       addAuditEvent(followup.campaignId, "FollowupFailed", "worker", {
         error,
-        manualTrigger: false,
+        manualTrigger: options.manualTrigger,
       });
       results.push({ followupId: followup.id, status: "failed", error });
       continue;
@@ -229,7 +229,7 @@ export async function runDueFollowups(): Promise<
       const delivery = await sendTelegramMessage(response.message);
       markFollowupResult(followup.id, { status: "sent", deliveryId: delivery.messageId });
       addAuditEvent(followup.campaignId, "FollowupExecuted", "worker", {
-        manualTrigger: false,
+        manualTrigger: options.manualTrigger,
         providerFingerprint: response.providerFingerprint,
       });
       addAuditEvent(followup.campaignId, "DeliverySucceeded", "telegram", {
@@ -240,7 +240,7 @@ export async function runDueFollowups(): Promise<
       const message = error instanceof Error ? error.message : "The follow-up failed.";
       markFollowupResult(followup.id, { status: "failed", error: message });
       addAuditEvent(followup.campaignId, "DeliveryFailed", "worker", {
-        manualTrigger: false,
+        manualTrigger: options.manualTrigger,
         code: error instanceof ReetiError ? error.code : "FOLLOWUP_FAILED",
         message,
       });

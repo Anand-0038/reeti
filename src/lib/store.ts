@@ -530,10 +530,16 @@ export function listDueFollowups(at = new Date().toISOString()): FollowupRecord[
   return rows.map(rowToFollowup);
 }
 
-export function markFollowupRunning(id: string): void {
+export function getFollowup(followupId: string): FollowupRecord | null {
+  const row = getDatabase().prepare("SELECT * FROM followups WHERE id = ?").get(followupId) as
+    Record<string, unknown> | undefined;
+  return row ? rowToFollowup(row) : null;
+}
+
+export function markFollowupRunning(id: string, manualTrigger = false): void {
   getDatabase()
-    .prepare("UPDATE followups SET status = ? WHERE id = ? AND status = ?")
-    .run("running", id, "scheduled");
+    .prepare("UPDATE followups SET status = ?, manual_trigger = ? WHERE id = ? AND status = ?")
+    .run("running", manualTrigger ? 1 : 0, id, "scheduled");
 }
 
 export function markFollowupResult(

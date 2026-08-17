@@ -15,6 +15,7 @@ const {
   confirmPolicy,
   createCampaign,
   createSource,
+  getFollowup,
   getCampaign,
   listDueFollowups,
   listAudit,
@@ -26,14 +27,14 @@ const {
   markFollowupRunning,
   proposePolicy,
 } = await import("../src/lib/store.ts");
-const { approveCampaign } = await import("../src/lib/workflow.ts");
+const { approveCampaign, runDueFollowups } = await import("../src/lib/workflow.ts");
 
 test.after(() => {
   closeDatabase();
   rmSync(databasePath, { force: true });
 });
 
-test("local campaign decisions remain persisted and auditable", () => {
+test("local campaign decisions remain persisted and auditable", async () => {
   resetStore();
   const source = createSource({
     inputType: "paste",
@@ -82,8 +83,15 @@ test("local campaign decisions remain persisted and auditable", () => {
   const followup = scheduleFollowup(campaign.id, dueAt);
   assert.equal(scheduleFollowup(campaign.id, dueAt).id, followup.id);
   assert.equal(listDueFollowups("2020-01-02T00:00:00.000Z").length, 1);
-  markFollowupRunning(followup.id);
+  markFollowupRunning(followup.id, true);
+  assert.equal(getFollowup(followup.id)?.manualTrigger, true);
   markFollowupResult(followup.id, { status: "failed", error: "Minds not configured" });
+
+  scheduleFollowup(campaign.id, "2020-01-01T00:01:00.000Z");
+  const workerResult = await runDueFollowups({ manualTrigger: true });
+  assert.equal(workerResult.length, 1);
+  const workerFailure = listAudit().find((event) => event.type === "DeliveryFailed");
+  assert.equal(workerFailure?.detail.manualTrigger, true);
 
   const auditTypes = new Set(listAudit().map((event) => event.type));
   for (const expected of [

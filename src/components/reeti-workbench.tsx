@@ -11,7 +11,14 @@ import type { CampaignRecord, DashboardData, SourceRecord } from "@/lib/types";
 type Surface = "proof" | "canon" | "continuity";
 
 interface ApiError {
-  error?: { message?: string };
+  error?: { message?: string; details?: Record<string, unknown> };
+}
+
+interface MindsPreflight {
+  mindId: string;
+  mindName: string;
+  alias: string;
+  enabled: boolean;
 }
 
 export default function ReetiWorkbench() {
@@ -20,6 +27,8 @@ export default function ReetiWorkbench() {
   const [surface, setSurface] = useState<Surface>("proof");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [preflightBusy, setPreflightBusy] = useState(false);
+  const [mindsPreflight, setMindsPreflight] = useState<MindsPreflight | null>(null);
   const [message, setMessage] = useState<{
     text: string;
     tone: "info" | "success" | "error";
@@ -110,7 +119,31 @@ export default function ReetiWorkbench() {
     });
   }
 
-  const providerLabel = data?.provider.mindsConfigured ? "Minds configured" : "Minds needs setup";
+  async function checkMinds() {
+    setPreflightBusy(true);
+    try {
+      const response = await fetch("/api/minds/preflight", { method: "POST" });
+      const payload = (await response.json()) as ApiError & { preflight?: MindsPreflight };
+      if (!response.ok || !payload.preflight) {
+        setMindsPreflight(null);
+        const missing = payload.error?.details?.missing;
+        const missingText = Array.isArray(missing) ? ` Missing: ${missing.join(", ")}.` : "";
+        throw new Error(`${payload.error?.message ?? "Minds preflight failed."}${missingText}`);
+      }
+      setMindsPreflight(payload.preflight);
+      showMessage(`Minds preflight passed · ${payload.preflight.mindName}`, "success");
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Minds preflight failed.", "error");
+    } finally {
+      setPreflightBusy(false);
+    }
+  }
+
+  const providerLabel = mindsPreflight
+    ? `Minds ready · ${mindsPreflight.mindName}`
+    : data?.provider.mindsConfigured
+      ? "Minds credentials set"
+      : "Minds needs setup";
 
   return (
     <main className="app-shell">
@@ -123,14 +156,26 @@ export default function ReetiWorkbench() {
         </a>
         <div className="topbar-context">
           <span className="eyebrow">CONTENT OPERATIONS / LOCAL</span>
-          <span
-            className={
-              data?.provider.mindsConfigured ? "connection-pill good" : "connection-pill warning"
-            }
-          >
-            <span className="connection-dot" />
-            {providerLabel}
-          </span>
+          <div className="provider-context">
+            <span
+              className={
+                mindsPreflight || data?.provider.mindsConfigured
+                  ? "connection-pill good"
+                  : "connection-pill warning"
+              }
+            >
+              <span className="connection-dot" />
+              {providerLabel}
+            </span>
+            <button
+              type="button"
+              className="provider-check"
+              onClick={() => void checkMinds()}
+              disabled={preflightBusy}
+            >
+              {preflightBusy ? "Checking…" : "Check Minds"}
+            </button>
+          </div>
         </div>
         <a className="quiet-link" href="#continuity">
           Continuity record <span aria-hidden="true">↗</span>

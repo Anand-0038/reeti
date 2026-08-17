@@ -110,6 +110,11 @@ a {
   gap: 18px;
   color: var(--ink-soft);
 }
+.provider-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .eyebrow,
 .section-kicker,
 .proof-stamp,
@@ -155,6 +160,24 @@ a {
   height: 7px;
   border-radius: 50%;
   background: currentColor;
+}
+.provider-check {
+  padding: 5px 7px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: "Azeret Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+.provider-check:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.provider-check:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 .quiet-link {
   font-size: 0.88rem;
@@ -1023,6 +1046,15 @@ select:focus {
     order: 3;
     width: 100%;
     justify-content: space-between;
+  }
+  .provider-context {
+    min-width: 0;
+  }
+  .connection-pill {
+    max-width: 195px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .quiet-link {
     font-size: 0.78rem;

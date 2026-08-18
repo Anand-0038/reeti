@@ -84,10 +84,12 @@ export default function SourceDesk({ busy, onSourceReady, onMessage }: SourceDes
         </label>
         <input
           id="source-title"
+          name="title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="e.g. Why evaluation is the boring part of RAG"
           maxLength={180}
+          autoComplete="off"
         />
 
         {mode === "url" ? (
@@ -95,11 +97,13 @@ export default function SourceDesk({ busy, onSourceReady, onMessage }: SourceDes
             <label htmlFor="source-url">Article URL</label>
             <input
               id="source-url"
+              name="url"
               type="url"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="https://example.com/article"
               required
+              autoComplete="url"
             />
             <p className="field-note">
               Reeti reads public HTTP(S) text only. No cookies, logins, or private hosts are sent.
@@ -110,6 +114,7 @@ export default function SourceDesk({ busy, onSourceReady, onMessage }: SourceDes
             <label htmlFor="source-body">Source text</label>
             <textarea
               id="source-body"
+              name="body"
               value={body}
               onChange={(event) => setBody(event.target.value)}
               placeholder="Paste an article, transcript, or newsletter draft here…"

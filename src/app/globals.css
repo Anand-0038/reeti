@@ -133,7 +133,7 @@ a {
 }
 .eyebrow,
 .section-kicker {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -141,9 +141,10 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 9px;
+  min-height: 44px;
+  padding: 8px 10px;
   border: 1px solid var(--rule);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -162,13 +163,14 @@ a {
   background: currentColor;
 }
 .provider-check {
-  padding: 5px 7px;
+  min-height: 44px;
+  padding: 8px 10px;
   border: 1px solid var(--rule);
   background: transparent;
   color: var(--ink-soft);
   cursor: pointer;
   font-family: "Azeret Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 .provider-check:hover:not(:disabled) {
@@ -180,6 +182,10 @@ a {
   opacity: 0.55;
 }
 .quiet-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
   font-size: 0.88rem;
   text-decoration: none;
   color: var(--ink-soft);
@@ -251,12 +257,12 @@ a {
 .count {
   color: var(--ink-soft);
   font-family: "Azeret Mono", monospace;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
 }
 .index-copy {
   margin: 13px 0 18px;
   color: var(--ink-soft);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   line-height: 1.6;
 }
 .index-new {
@@ -286,6 +292,11 @@ a {
   display: grid;
   gap: 4px;
   margin-top: 16px;
+  padding: 0;
+  list-style: none;
+}
+.campaign-list > li {
+  min-width: 0;
 }
 .campaign-item {
   display: grid;
@@ -316,7 +327,7 @@ a {
   margin-top: 2px;
   color: var(--ink-soft);
   font-family: "Azeret Mono", monospace;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: capitalize;
 }
 .campaign-mark {
@@ -336,7 +347,7 @@ a {
 }
 .index-footer p {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   line-height: 1.45;
 }
 .registration-cross {
@@ -358,6 +369,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
   padding: 9px 12px;
   border: 0;
   border-bottom: 3px solid transparent;
@@ -368,7 +380,7 @@ a {
 }
 .surface-tab span {
   font-family: "Azeret Mono", monospace;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 .surface-tab:hover,
 .surface-tab.active {
@@ -422,10 +434,10 @@ h3 {
 }
 .proof-stamp {
   flex: 0 0 auto;
-  padding: 5px 7px;
+  padding: 7px 8px;
   border: 1px solid var(--blue);
   color: var(--blue);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
 }
 .quiet-stamp {
@@ -503,7 +515,7 @@ select:focus {
 .field-note {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 0.67rem;
+  font-size: 0.8rem;
   line-height: 1.5;
 }
 .form-footer {
@@ -554,18 +566,19 @@ select:focus {
   color: var(--blue);
 }
 .button.small {
-  min-height: 34px;
-  padding: 6px 9px;
-  font-size: 0.75rem;
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
 }
 .text-button {
   margin-top: 7px;
-  padding: 0;
+  min-height: 44px;
+  padding: 8px 0;
   border: 0;
   background: transparent;
   color: var(--blue);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -588,7 +601,7 @@ select:focus {
   margin: 0;
   color: var(--ink-soft);
   font-family: "Azeret Mono", monospace;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
 }
 .receipt-note {
   display: flex;
@@ -614,10 +627,10 @@ select:focus {
 }
 .status {
   display: inline-block;
-  padding: 4px 7px;
+  padding: 6px 8px;
   border: 1px solid currentColor;
   font-family: "Azeret Mono", monospace;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 .status-blue {
@@ -687,7 +700,7 @@ select:focus {
   justify-content: space-between;
   gap: 10px;
   color: var(--ink-soft);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -783,7 +796,7 @@ select:focus {
   align-items: center;
   gap: 2px;
   color: var(--carbon);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -803,7 +816,7 @@ select:focus {
 }
 .annotation span {
   color: var(--ink-soft);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
 }
 .active-note {
   border-left-color: var(--blue);
@@ -826,7 +839,7 @@ select:focus {
   padding-top: 13px;
   border-top: 1px solid var(--rule);
   color: var(--ink-soft);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
 }
 
 .canon-surface,
@@ -860,7 +873,7 @@ select:focus {
 }
 .policy-card span {
   color: var(--ink-soft);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: capitalize;
 }
 .canon-boundary {
@@ -914,7 +927,7 @@ select:focus {
   display: flex;
   gap: 10px;
   color: var(--ink-soft);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 .timeline-copy strong {
@@ -958,7 +971,7 @@ select:focus {
   padding: 5px 8px;
   border: 1px solid var(--rule);
   color: var(--ink-soft);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
 }
 .loading-surface {
   min-height: 510px;
@@ -1000,7 +1013,7 @@ select:focus {
   padding: 16px 0 24px;
   border-top: 1px solid var(--carbon);
   color: var(--ink-soft);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -1057,7 +1070,7 @@ select:focus {
     white-space: nowrap;
   }
   .quiet-link {
-    font-size: 0.78rem;
+    font-size: 0.85rem;
   }
   .workbench {
     grid-template-columns: 1fr;
@@ -1078,6 +1091,9 @@ select:focus {
     margin: 9px 0 0;
     padding-bottom: 3px;
   }
+  .campaign-list > li {
+    flex: 0 0 auto;
+  }
   .campaign-item {
     min-width: 180px;
     border: 1px solid var(--rule);
@@ -1091,7 +1107,7 @@ select:focus {
   .surface-tab {
     white-space: nowrap;
     padding-inline: 9px;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
   }
   .section-heading-row {
     display: block;

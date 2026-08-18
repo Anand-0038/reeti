@@ -133,6 +133,7 @@ export default function ReetiWorkbench() {
       setMindsPreflight(payload.preflight);
       showMessage(`Minds preflight passed · ${payload.preflight.mindName}`, "success");
     } catch (error) {
+      setMindsPreflight(null);
       showMessage(error instanceof Error ? error.message : "Minds preflight failed.", "error");
     } finally {
       setPreflightBusy(false);
@@ -220,35 +221,36 @@ export default function ReetiWorkbench() {
           >
             <span>＋</span> New source
           </button>
-          <div className="campaign-list" role="list" aria-label="Saved campaigns">
+          <ul className="campaign-list" aria-label="Saved campaigns">
             {(data?.campaigns ?? []).map((campaign) => (
-              <button
-                type="button"
-                role="listitem"
-                key={campaign.id}
-                className={
-                  selectedCampaignId === campaign.id ? "campaign-item active" : "campaign-item"
-                }
-                onClick={() => {
-                  setSelectedCampaignId(campaign.id);
-                  setSource(null);
-                  setSurface("proof");
-                }}
-              >
-                <span className="campaign-mark" aria-hidden="true">
-                  {campaign.status === "approved"
-                    ? "✓"
-                    : campaign.status === "provider_blocked"
-                      ? "!"
-                      : "·"}
-                </span>
-                <span>
-                  <strong>{campaign.source?.title ?? "Untitled source"}</strong>
-                  <small>{campaign.status.replaceAll("_", " ")}</small>
-                </span>
-              </button>
+              <li key={campaign.id}>
+                <button
+                  type="button"
+                  aria-pressed={selectedCampaignId === campaign.id}
+                  className={
+                    selectedCampaignId === campaign.id ? "campaign-item active" : "campaign-item"
+                  }
+                  onClick={() => {
+                    setSelectedCampaignId(campaign.id);
+                    setSource(null);
+                    setSurface("proof");
+                  }}
+                >
+                  <span className="campaign-mark" aria-hidden="true">
+                    {campaign.status === "approved"
+                      ? "✓"
+                      : campaign.status === "provider_blocked"
+                        ? "!"
+                        : "·"}
+                  </span>
+                  <span>
+                    <strong>{campaign.source?.title ?? "Untitled source"}</strong>
+                    <small>{campaign.status.replaceAll("_", " ")}</small>
+                  </span>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
           <div className="index-footer">
             <span className="registration-cross">＋</span>
             <p>Reeti keeps the working context local. No public publishing is connected.</p>

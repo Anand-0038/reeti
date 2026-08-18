@@ -6,6 +6,7 @@ flowchart LR
   desk --> importer[HTTP(S) importer or paste validator]
   importer --> sqlite[(Local SQLite\nworkflow + evidence state)]
   sqlite --> context[Confirmed policies\ncontent ledger\nprovenance]
+  sqlite --> packet[Campaign evidence packet\nsafe identifiers + audit]
   context --> minds[Official Minds client\nstable conversation alias]
   source[Source text] --> minds
   minds --> parser[Strict structured response parser]
@@ -31,4 +32,7 @@ flowchart LR
   provenance, campaign state, idempotency, and delivery receipts.
 - A local record cannot prove a provider result. Provider fingerprints and Telegram message IDs
   are stored only when returned by the provider.
+- The campaign evidence packet is a local, campaign-scoped export. It includes safe identifiers,
+  generated artifacts, decisions, follow-ups, and audit events, but deliberately excludes the raw
+  source body.
 - No public social publishing is connected. Approval means approved in the local workspace.

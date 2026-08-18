@@ -674,6 +674,123 @@ select:focus {
 .blocked-actions {
   margin-top: 14px;
 }
+.evidence-panel {
+  margin: 24px 0 18px;
+  padding: 18px;
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--blue);
+  background: var(--proof);
+}
+.evidence-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.evidence-panel-heading h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.evidence-intro {
+  max-width: 720px;
+  margin: 12px 0 16px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.evidence-status {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: "Azeret Mono", monospace;
+  font-size: 0.8rem;
+}
+.evidence-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--red);
+  font-size: 0.85rem;
+}
+.evidence-error .text-button {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.evidence-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  background: var(--sheet);
+}
+.evidence-check-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-weight: 800;
+}
+.evidence-check-mark.blue {
+  color: var(--blue);
+}
+.evidence-check-mark.green {
+  color: var(--green);
+}
+.evidence-check-mark.yellow {
+  color: #927800;
+}
+.evidence-check-mark.red {
+  color: var(--red);
+}
+.evidence-check > span:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.evidence-check strong {
+  font-size: 0.8rem;
+}
+.evidence-check small {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-family: "Azeret Mono", monospace;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.evidence-meta,
+.evidence-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.evidence-meta {
+  margin-top: 12px;
+  color: var(--ink-soft);
+  font-family: "Azeret Mono", monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.evidence-actions {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--rule);
+}
+.evidence-actions .field-note {
+  max-width: 520px;
+}
 .output-tabs {
   margin-top: 28px;
 }
@@ -1115,6 +1232,24 @@ select:focus {
   .proof-stamp {
     display: inline-block;
     margin-top: 14px;
+  }
+  .evidence-panel-heading {
+    display: block;
+  }
+  .evidence-panel-heading .boundary-label {
+    display: inline-block;
+    margin-top: 12px;
+  }
+  .evidence-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .evidence-meta,
+  .evidence-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .evidence-actions .button {
+    width: 100%;
   }
   .source-desk,
   .campaign-proof,

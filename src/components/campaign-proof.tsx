@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import type { CampaignRecord, PolicyRecord } from "@/lib/types";
+import EvidencePacket from "@/components/evidence-packet";
+import type { CampaignProofBundle, CampaignRecord } from "@/lib/types";
 
 interface CampaignProofProps {
   campaign: CampaignRecord | null;
@@ -30,6 +31,56 @@ export default function CampaignProof({
   const [rule, setRule] = useState("");
   const [scope, setScope] = useState("all_public_content");
   const [showFeedback, setShowFeedback] = useState(false);
+  const [proofPacket, setProofPacket] = useState<CampaignProofBundle | null>(null);
+  const [proofError, setProofError] = useState<string | null>(null);
+  const [proofErrorKey, setProofErrorKey] = useState<string | null>(null);
+  const [proofLoadedKey, setProofLoadedKey] = useState<string | null>(null);
+  const [proofReloadKey, setProofReloadKey] = useState(0);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const campaignId = campaign?.id;
+  const campaignUpdatedAt = campaign?.updatedAt;
+  const proofRequestKey = `${campaignId ?? "none"}:${campaignUpdatedAt ?? "none"}:${proofReloadKey}`;
+  const proofReady = Boolean(
+    campaignId && proofLoadedKey === proofRequestKey && proofPacket?.campaign.id === campaignId,
+  );
+  const currentProofError = proofErrorKey === proofRequestKey ? proofError : null;
+  const proofBusy = Boolean(campaignId && !proofReady && !currentProofError);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    if (!campaignId) return () => controller.abort();
+
+    fetch(`/api/campaigns/${campaignId}/proof`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as ApiError & { proof?: CampaignProofBundle };
+        if (!response.ok || !payload.proof)
+          throw new Error(payload.error?.message ?? "The evidence packet could not be loaded.");
+        if (!cancelled) {
+          setProofPacket(payload.proof);
+          setProofLoadedKey(proofRequestKey);
+          setProofError(null);
+          setProofErrorKey(null);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) {
+          setProofError(
+            error instanceof Error ? error.message : "The evidence packet could not be loaded.",
+          );
+          setProofErrorKey(proofRequestKey);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [campaignId, proofRequestKey]);
 
   if (!campaign) {
     return (
@@ -82,6 +133,7 @@ export default function CampaignProof({
       setRule("");
       setShowFeedback(false);
       await onRefresh();
+      setProofReloadKey((value) => value + 1);
     } catch (error) {
       onMessage(error instanceof Error ? error.message : "Feedback could not be saved.", "error");
     }
@@ -92,6 +144,7 @@ export default function CampaignProof({
       await post(`/api/campaigns/${activeCampaign.id}/approve`);
       onMessage("Campaign approved locally. No public post was sent.", "success");
       await onRefresh();
+      setProofReloadKey((value) => value + 1);
     } catch (error) {
       onMessage(
         error instanceof Error ? error.message : "Approval could not be recorded.",
@@ -106,11 +159,41 @@ export default function CampaignProof({
       await post(`/api/campaigns/${activeCampaign.id}/followup`, { dueAt });
       onMessage("Follow-up scheduled for one hour from now. It is not sent yet.", "success");
       await onRefresh();
+      setProofReloadKey((value) => value + 1);
     } catch (error) {
       onMessage(
         error instanceof Error ? error.message : "Follow-up could not be scheduled.",
         "error",
       );
+    }
+  }
+
+  async function downloadProof() {
+    if (!proofReady || !proofPacket) {
+      onMessage("The local evidence packet is still loading.", "info");
+      return;
+    }
+    setDownloadBusy(true);
+    try {
+      const blob = new Blob([JSON.stringify(proofPacket, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `reeti-${activeCampaign.id.slice(0, 8)}-evidence.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      onMessage("Local evidence packet downloaded. Raw source text was excluded.", "success");
+    } catch (error) {
+      onMessage(
+        error instanceof Error ? error.message : "The evidence packet could not be downloaded.",
+        "error",
+      );
+    } finally {
+      setDownloadBusy(false);
     }
   }
 
@@ -131,6 +214,15 @@ export default function CampaignProof({
           {activeCampaign.source?.wordCount.toLocaleString() ?? 0} WORDS
         </span>
       </div>
+
+      <EvidencePacket
+        packet={proofReady ? proofPacket : null}
+        busy={proofBusy}
+        error={currentProofError}
+        downloadBusy={downloadBusy}
+        onRetry={() => setProofReloadKey((value) => value + 1)}
+        onDownload={() => void downloadProof()}
+      />
 
       {activeCampaign.status === "provider_blocked" ? (
         <div className="blocked-panel" role="status">

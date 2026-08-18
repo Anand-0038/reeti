@@ -120,6 +120,45 @@ export interface DashboardData {
   };
 }
 
+export interface CampaignProofBundle {
+  schemaVersion: 1;
+  boundary: "local";
+  exportedAt: string;
+  excludesRawSourceBody: true;
+  provider: DashboardData["provider"];
+  campaign: {
+    id: string;
+    sourceId: string;
+    status: CampaignStatus;
+    mindAlias: string | null;
+    createdAt: string;
+    updatedAt: string;
+    dueAt: string | null;
+  };
+  source: {
+    id: string;
+    inputType: SourceInputType;
+    sourceUrl: string | null;
+    canonicalUrl: string | null;
+    title: string;
+    contentHash: string;
+    wordCount: number;
+    createdAt: string;
+  };
+  artifacts: CampaignArtifact[];
+  feedback: FeedbackRecord[];
+  policies: PolicyRecord[];
+  ledger: LedgerEntry[];
+  followups: FollowupRecord[];
+  audit: AuditEvent[];
+  proof: {
+    sourceReceipt: "recorded";
+    generation: "artifacts_recorded" | "provider_blocked" | "not_run";
+    creatorDecision: "recorded" | "none";
+    followUp: "scheduled" | "executed" | "failed" | "mixed" | "none";
+  };
+}
+
 export interface GeneratedCampaign {
   summary: string;
   xThread: string[];

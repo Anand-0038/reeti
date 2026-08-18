@@ -521,6 +521,13 @@ export function scheduleFollowup(campaignId: string, dueAt: string): FollowupRec
   return record;
 }
 
+export function listFollowups(campaignId: string): FollowupRecord[] {
+  const rows = getDatabase()
+    .prepare("SELECT * FROM followups WHERE campaign_id = ? ORDER BY due_at DESC")
+    .all(campaignId) as Record<string, unknown>[];
+  return rows.map(rowToFollowup);
+}
+
 export function listDueFollowups(at = new Date().toISOString()): FollowupRecord[] {
   const rows = getDatabase()
     .prepare(

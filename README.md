@@ -22,7 +22,8 @@ and Telegram paths are not claimed yet because this checkout currently has no
 That boundary is intentional:
 
 - local source import, campaign state, policy confirmation, audit history, and
-  follow-up scheduling are real and persisted in SQLite;
+  follow-up scheduling are real and persisted in SQLite; each campaign can expose
+  a scoped local evidence packet that excludes the raw source body;
 - Minds generation, cross-session persistence, and Telegram delivery require
   the corresponding real credentials and must be verified end to end;
 - deployment, public URLs, repository publication, video, and final submission
@@ -99,6 +100,9 @@ corepack pnpm run build
   not fabricate provider output when that adapter is unavailable.
 - Telegram is isolated behind `src/lib/telegram.ts` and records the provider
   message ID only after a real API response.
+- Campaign-scoped evidence packets are assembled server-side from SQLite and
+  label the local/provider boundary explicitly. They are not public release or
+  submission receipts.
 
 See [`docs/architecture.md`](docs/architecture.md) and
 [`docs/evidence-boundary.md`](docs/evidence-boundary.md) for the system map and

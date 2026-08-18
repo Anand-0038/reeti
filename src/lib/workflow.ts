@@ -16,7 +16,9 @@ import {
   getDashboard,
   listDueFollowups,
   listFeedback,
+  listAudit,
   listLedger,
+  listFollowups,
   listPolicies,
   markCampaignProviderBlocked,
   markFollowupResult,
@@ -26,7 +28,7 @@ import {
   scheduleFollowup,
   updateCampaignStatus,
 } from "@/lib/store";
-import type { DashboardData, FeedbackKind } from "@/lib/types";
+import type { CampaignProofBundle, DashboardData, FeedbackKind } from "@/lib/types";
 import { importPublicUrl, validatePastedSource } from "@/lib/source";
 
 export const sourceRequestSchema = z.object({
@@ -252,4 +254,88 @@ export async function runDueFollowups(
 
 export function dashboard(): DashboardData {
   return { ...getDashboard(), provider: getProviderStatus() };
+}
+
+export function getCampaignProofBundle(campaignId: string): CampaignProofBundle {
+  const campaign = getCampaign(campaignId);
+  if (!campaign?.source) {
+    throw new ReetiError("Campaign not found.", "CAMPAIGN_NOT_FOUND", 404);
+  }
+
+  const feedback = listFeedback(campaign.id);
+  const followups = listFollowups(campaign.id);
+  const feedbackIds = new Set(feedback.map((item) => item.id));
+  const policies = listPolicies().filter(
+    (policy) =>
+      policy.status === "active" ||
+      (policy.sourceFeedbackId && feedbackIds.has(policy.sourceFeedbackId)),
+  );
+  const policyIds = new Set(policies.map((item) => item.id));
+  const audit = listAudit(500)
+    .filter((event) => {
+      if (event.campaignId === campaign.id) return true;
+      if (event.campaignId !== null) return false;
+      const feedbackId = event.detail.feedbackId;
+      const policyId = event.detail.policyId;
+      return (
+        (typeof feedbackId === "string" && feedbackIds.has(feedbackId)) ||
+        (typeof policyId === "string" && policyIds.has(policyId))
+      );
+    })
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  const artifacts = campaign.artifacts ?? [];
+  const generation = artifacts.length
+    ? "artifacts_recorded"
+    : campaign.status === "provider_blocked"
+      ? "provider_blocked"
+      : "not_run";
+  const followUp = followups.length
+    ? followups.some((item) => item.status === "sent") &&
+      followups.some((item) => item.status === "failed")
+      ? "mixed"
+      : followups.some((item) => item.status === "sent")
+        ? "executed"
+        : followups.some((item) => item.status === "failed")
+          ? "failed"
+          : "scheduled"
+    : "none";
+
+  return {
+    schemaVersion: 1,
+    boundary: "local",
+    exportedAt: new Date().toISOString(),
+    excludesRawSourceBody: true,
+    provider: getProviderStatus(),
+    campaign: {
+      id: campaign.id,
+      sourceId: campaign.sourceId,
+      status: campaign.status,
+      mindAlias: campaign.mindAlias,
+      createdAt: campaign.createdAt,
+      updatedAt: campaign.updatedAt,
+      dueAt: campaign.dueAt,
+    },
+    source: {
+      id: campaign.source.id,
+      inputType: campaign.source.inputType,
+      sourceUrl: campaign.source.sourceUrl,
+      canonicalUrl: campaign.source.canonicalUrl,
+      title: campaign.source.title,
+      contentHash: campaign.source.contentHash,
+      wordCount: campaign.source.wordCount,
+      createdAt: campaign.source.createdAt,
+    },
+    artifacts,
+    feedback,
+    policies,
+    ledger: listLedger().filter((item) => item.campaignId === campaign.id),
+    followups,
+    audit,
+    proof: {
+      sourceReceipt: "recorded",
+      generation,
+      creatorDecision: feedback.length || campaign.status === "approved" ? "recorded" : "none",
+      followUp,
+    },
+  };
 }

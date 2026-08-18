@@ -19,15 +19,18 @@ const {
   getCampaign,
   listDueFollowups,
   listAudit,
+  listFollowups,
   listPolicies,
   scheduleFollowup,
   saveCampaignArtifacts,
   resetStore,
   markFollowupResult,
   markFollowupRunning,
+  markCampaignProviderBlocked,
   proposePolicy,
 } = await import("../src/lib/store.ts");
-const { approveCampaign, runDueFollowups } = await import("../src/lib/workflow.ts");
+const { approveCampaign, getCampaignProofBundle, runDueFollowups } =
+  await import("../src/lib/workflow.ts");
 
 test.after(() => {
   closeDatabase();
@@ -106,4 +109,51 @@ test("local campaign decisions remain persisted and auditable", async () => {
   ]) {
     assert.ok(auditTypes.has(expected), `missing audit event ${expected}`);
   }
+});
+
+test("campaign proof bundle is scoped and excludes raw source content", () => {
+  resetStore();
+  const source = createSource({
+    inputType: "paste",
+    title: "Private creator source",
+    body: "creator-private-source: preserve the technical detail and never expose this raw body.",
+  });
+  const campaign = createCampaign(source.id, "reeti-main");
+  markCampaignProviderBlocked(campaign.id, "MINDS_NOT_CONFIGURED", "Provider is not configured.");
+  const otherSource = createSource({
+    inputType: "paste",
+    title: "Another source",
+    body: "A separate campaign should not leak its proposed policy into this packet.",
+  });
+  const otherCampaign = createCampaign(otherSource.id, "reeti-main");
+  const otherFeedback = addFeedback({
+    campaignId: otherCampaign.id,
+    kind: "edit",
+    reason: "Keep the other campaign separate",
+    text: "This decision belongs to a different campaign.",
+  });
+  const otherPolicy = proposePolicy({
+    feedbackId: otherFeedback.id,
+    rule: "Only use the other campaign's rule in its own packet.",
+    scope: "x",
+  });
+  const dueAt = "2030-01-01T00:00:00.000Z";
+  scheduleFollowup(campaign.id, dueAt);
+
+  const packet = getCampaignProofBundle(campaign.id);
+
+  assert.equal(packet.boundary, "local");
+  assert.equal(packet.excludesRawSourceBody, true);
+  assert.equal(packet.source.contentHash.length, 64);
+  assert.equal(packet.proof.generation, "provider_blocked");
+  assert.equal(packet.proof.followUp, "scheduled");
+  assert.equal(packet.followups.length, 1);
+  assert.equal(listFollowups(campaign.id).length, 1);
+  assert.equal("body" in packet.source, false);
+  assert.equal(JSON.stringify(packet).includes("creator-private-source"), false);
+  assert.equal(
+    packet.policies.some((policy) => policy.id === otherPolicy.id),
+    false,
+  );
+  assert.ok(packet.audit.some((event) => event.type === "GenerationBlocked"));
 });

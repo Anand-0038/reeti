@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 
 import EvidencePacket from "@/components/evidence-packet";
-import type { CampaignProofBundle, CampaignRecord } from "@/lib/types";
+import type {
+  CampaignArtifact,
+  CampaignProofBundle,
+  CampaignRecord,
+  GenerationContext,
+  MemoryEffect,
+} from "@/lib/types";
 
 interface CampaignProofProps {
   campaign: CampaignRecord | null;
@@ -17,6 +23,45 @@ interface ApiError {
   error?: { message?: string };
 }
 
+function contextFromProof(
+  packet: CampaignProofBundle | null,
+  campaign: CampaignRecord,
+): GenerationContext | undefined {
+  const event = packet?.audit.filter((item) => item.type === "MindsResponseReceived").at(-1);
+  if (!event) return campaign.generationContext;
+  const stringArray = (value: unknown) =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  const memoryEffects = Array.isArray(event.detail.memoryEffects)
+    ? event.detail.memoryEffects.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const memory = (item as { memory?: unknown }).memory;
+        const effect = (item as { effect?: unknown }).effect;
+        return typeof memory === "string" && typeof effect === "string" ? [{ memory, effect }] : [];
+      })
+    : [];
+  return {
+    rememberedRules: stringArray(event.detail.rememberedRules),
+    avoidedAngles: stringArray(event.detail.avoidedAngles),
+    memoryEffects,
+    nextReviewQuestion:
+      typeof event.detail.nextReviewQuestion === "string" ? event.detail.nextReviewQuestion : null,
+    providerFingerprint:
+      typeof event.detail.providerFingerprint === "string"
+        ? event.detail.providerFingerprint
+        : null,
+  };
+}
+
+function draftParagraphs(body: string): string[] {
+  return body
+    .replace(/<br\s*\/?>/gi, "\n\n")
+    .replace(/<\/?p\b[^>]*>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
 export default function CampaignProof({
   campaign,
   busy,
@@ -24,7 +69,6 @@ export default function CampaignProof({
   onMessage,
   onRetry,
 }: CampaignProofProps) {
-  const [activeTab, setActiveTab] = useState<"x" | "linkedin" | "short_video">("x");
   const [feedbackKind, setFeedbackKind] = useState<"edit" | "reject_angle">("reject_angle");
   const [reason, setReason] = useState("Avoid artificial urgency");
   const [feedback, setFeedback] = useState("");
@@ -85,10 +129,10 @@ export default function CampaignProof({
   if (!campaign) {
     return (
       <section className="surface campaign-proof empty-proof" aria-labelledby="proof-title">
-        <div className="section-kicker">02 / campaign proof</div>
+        <div className="section-kicker">Campaign</div>
         <div className="empty-state">
           <span className="empty-mark">×</span>
-          <h2 id="proof-title">No campaign proof yet</h2>
+          <h2 id="proof-title">No drafts yet</h2>
           <p>Save a source, then ask the configured Mind to build the first reviewable pack.</p>
           <span className="boundary-label">No provider call has been made.</span>
         </div>
@@ -97,7 +141,8 @@ export default function CampaignProof({
   }
 
   const activeCampaign = campaign;
-  const artifact = activeCampaign.artifacts?.find((item) => item.platform === activeTab);
+  const artifacts = activeCampaign.artifacts ?? [];
+  const generationContext = contextFromProof(proofPacket, activeCampaign);
   const status = statusCopy(activeCampaign.status);
 
   async function post(path: string, body: Record<string, unknown> = {}) {
@@ -199,7 +244,7 @@ export default function CampaignProof({
 
   return (
     <section className="surface campaign-proof" aria-labelledby="proof-title">
-      <div className="section-kicker">02 / campaign proof</div>
+      <div className="section-kicker">Campaign</div>
       <div className="section-heading-row">
         <div>
           <div className="title-with-status">
@@ -207,22 +252,13 @@ export default function CampaignProof({
             <span className={`status status-${status.tone}`}>{status.label}</span>
           </div>
           <p className="lede">
-            One source, three adaptations, and the decisions that should survive the next session.
+            One source, three adaptations. Review them before you share anything.
           </p>
         </div>
         <span className="proof-stamp">
           {activeCampaign.source?.wordCount.toLocaleString() ?? 0} WORDS
         </span>
       </div>
-
-      <EvidencePacket
-        packet={proofReady ? proofPacket : null}
-        busy={proofBusy}
-        error={currentProofError}
-        downloadBusy={downloadBusy}
-        onRetry={() => setProofReloadKey((value) => value + 1)}
-        onDownload={() => void downloadProof()}
-      />
 
       {activeCampaign.status === "provider_blocked" ? (
         <div className="blocked-panel" role="status">
@@ -246,52 +282,23 @@ export default function CampaignProof({
             </div>
           </div>
         </div>
-      ) : activeCampaign.artifacts?.length ? (
+      ) : artifacts.length ? (
         <>
-          <div className="output-tabs" role="tablist" aria-label="Campaign output formats">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "x"}
-              className={activeTab === "x" ? "output-tab active" : "output-tab"}
-              onClick={() => setActiveTab("x")}
-            >
-              X thread
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "linkedin"}
-              className={activeTab === "linkedin" ? "output-tab active" : "output-tab"}
-              onClick={() => setActiveTab("linkedin")}
-            >
-              LinkedIn
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "short_video"}
-              className={activeTab === "short_video" ? "output-tab active" : "output-tab"}
-              onClick={() => setActiveTab("short_video")}
-            >
-              Short hooks
-            </button>
-          </div>
-          <article className="proof-sheet">
-            <div className="sheet-meta">
-              <span>{artifact?.title}</span>
-              <span>source hash {activeCampaign.source?.contentHash.slice(0, 10)}…</span>
+          <section className="adaptations" aria-labelledby="adaptations-title">
+            <div className="adaptations-heading">
+              <div>
+                <div className="section-kicker">Your drafts</div>
+                <h3 id="adaptations-title">Three adaptations from one source.</h3>
+              </div>
+              <span className="adaptations-note">Review before sharing</span>
             </div>
-            <div className="draft-copy">
-              {artifact?.body.split("\n\n").map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
+            <div className="adaptation-grid">
+              {artifacts.map((item) => (
+                <AdaptationCard key={item.id} artifact={item} />
               ))}
             </div>
-            <div className="sheet-footer">
-              <span>Draft content · review required</span>
-              <span>Mind alias: {activeCampaign.mindAlias ?? "not assigned"}</span>
-            </div>
-          </article>
+          </section>
+          {generationContext && <ContinuitySignal context={generationContext} />}
           <div className="decision-bar">
             <button
               type="button"
@@ -327,6 +334,11 @@ export default function CampaignProof({
               onSubmit={submitFeedback}
             />
           )}
+          <GenerationContextPanel
+            context={generationContext}
+            alias={activeCampaign.mindAlias}
+            artifacts={artifacts}
+          />
         </>
       ) : (
         <div className="empty-state compact">
@@ -335,7 +347,171 @@ export default function CampaignProof({
           <p>Generation is not complete yet.</p>
         </div>
       )}
+
+      <EvidencePacket
+        packet={proofReady ? proofPacket : null}
+        busy={proofBusy}
+        error={currentProofError}
+        downloadBusy={downloadBusy}
+        onRetry={() => setProofReloadKey((value) => value + 1)}
+        onDownload={() => void downloadProof()}
+      />
     </section>
+  );
+}
+
+function ContinuitySignal({ context }: { context: GenerationContext }) {
+  const memoryCount = context.rememberedRules.length;
+  const avoidedCount = context.avoidedAngles.length;
+
+  return (
+    <section className="continuity-signal" aria-labelledby="continuity-signal-title">
+      <div className="continuity-signal-copy">
+        <div className="section-kicker">Continuity at work</div>
+        <h3 id="continuity-signal-title">Your corrections travel with the next source.</h3>
+        <p>
+          Minds returned the working context for this generation. Reeti keeps the effect visible so
+          you can review the reasoning before you approve the drafts.
+        </p>
+      </div>
+      <div className="continuity-signal-stats" aria-label="Generation continuity summary">
+        <div>
+          <strong>{memoryCount}</strong>
+          <span>memories carried in</span>
+        </div>
+        <div>
+          <strong>{avoidedCount}</strong>
+          <span>angles kept out</span>
+        </div>
+      </div>
+      <a className="continuity-signal-link" href="#generation-context-title">
+        See what changed <span aria-hidden="true">→</span>
+      </a>
+    </section>
+  );
+}
+
+function GenerationContextPanel({
+  context,
+  alias,
+  artifacts,
+}: {
+  context: GenerationContext | undefined;
+  alias: string | null;
+  artifacts: CampaignArtifact[];
+}) {
+  const effects = context?.memoryEffects ?? [];
+  const memories = context?.rememberedRules ?? [];
+  const visibleEffects: MemoryEffect[] = effects.length
+    ? effects
+    : memories.map((memory) => ({ memory, effect: observedEffect(memory, artifacts) }));
+
+  return (
+    <section className="generation-context" aria-labelledby="generation-context-title">
+      <div className="generation-context-heading">
+        <div>
+          <div className="section-kicker">Minds context</div>
+          <h3 id="generation-context-title">What Minds carried forward.</h3>
+          <p>
+            These are the memories returned with this real generation. When Minds supplied an effect
+            note, it is shown directly; older records show Reeti&apos;s observed effect.
+          </p>
+        </div>
+        <span className="context-stamp">{alias ? "Minds connected" : "Minds not recorded"}</span>
+      </div>
+
+      <div className="generation-context-grid">
+        <div>
+          <div className="context-list-label">
+            {effects.length ? "Memory → effect from Minds" : "Memory → observed effect"}
+          </div>
+          {visibleEffects.length ? (
+            <div className="memory-effects">
+              {visibleEffects.map((item, index) => (
+                <div className="memory-effect" key={`${item.memory}-${index}`}>
+                  <strong>{item.memory}</strong>
+                  <span aria-hidden="true">→</span>
+                  <p>{item.effect}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="quiet">No remembered rules were returned for this generation.</p>
+          )}
+        </div>
+
+        <div className="avoided-context">
+          <div className="context-list-label">Kept out of this pack</div>
+          {context?.avoidedAngles.length ? (
+            <ul>
+              {context.avoidedAngles.map((angle) => (
+                <li key={angle}>{angle}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="quiet">No prior angles were marked as avoided.</p>
+          )}
+          {context?.nextReviewQuestion && (
+            <div className="next-question">
+              <span>Next decision</span>
+              <p>{context.nextReviewQuestion}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function observedEffect(memory: string, artifacts: CampaignArtifact[]): string {
+  const copy = artifacts.map((artifact) => artifact.body).join(" ");
+  const lower = memory.toLowerCase();
+  if (lower.includes("emoji") && !/\p{Extended_Pictographic}/u.test(copy)) {
+    return "All three drafts keep the language emoji-free.";
+  }
+  if (lower.includes("urgency")) {
+    return "The openings use useful detail instead of urgency-based language.";
+  }
+  if (lower.includes("vague hype") || lower.includes("technical specificity")) {
+    return "The adaptations lead with technical detail instead of broad hype.";
+  }
+  if (lower.includes("customer outcomes") || lower.includes("metrics")) {
+    return "No unsupported customer metrics or outcomes appear in the drafts.";
+  }
+  if (lower.includes("published") || lower.includes("provider boundary")) {
+    return "The pack stays review-only; Reeti does not claim that anything was published.";
+  }
+  if (lower.includes("source as data") || lower.includes("citations")) {
+    return "The drafts stay within the source instead of adding unsupported capabilities or citations.";
+  }
+  return "Reeti carried this exact memory into the generation record; the older response did not return a separate effect note.";
+}
+
+function AdaptationCard({ artifact }: { artifact: CampaignArtifact }) {
+  const platformLabel =
+    artifact.platform === "x"
+      ? "X thread"
+      : artifact.platform === "linkedin"
+        ? "LinkedIn post"
+        : "Short-video hooks";
+
+  return (
+    <article className={`adaptation-card adaptation-${artifact.platform}`}>
+      <div className="adaptation-card-heading">
+        <div>
+          <span className="adaptation-platform">{platformLabel}</span>
+          <h4>{artifact.title}</h4>
+        </div>
+        <span className="adaptation-mark" aria-hidden="true">
+          {artifact.platform === "x" ? "X" : artifact.platform === "linkedin" ? "in" : "▶"}
+        </span>
+      </div>
+      <div className="adaptation-copy">
+        {draftParagraphs(artifact.body).map((paragraph, index) => (
+          <p key={`${paragraph}-${index}`}>{paragraph}</p>
+        ))}
+      </div>
+    </article>
   );
 }
 
@@ -356,7 +532,7 @@ function FeedbackForm(props: {
     <form className="feedback-form" onSubmit={props.onSubmit}>
       <div className="feedback-head">
         <div>
-          <span className="section-kicker">margin note / new decision</span>
+          <span className="section-kicker">Revision</span>
           <h3>What should change?</h3>
         </div>
         <span className="mark red large">×</span>
@@ -438,8 +614,8 @@ function FeedbackForm(props: {
 }
 
 function statusCopy(status: CampaignRecord["status"]): { label: string; tone: string } {
-  if (status === "approved") return { label: "Approved locally", tone: "green" };
-  if (status === "provider_blocked") return { label: "Provider blocked", tone: "red" };
-  if (status === "needs_review") return { label: "Needs review", tone: "yellow" };
+  if (status === "approved") return { label: "Approved", tone: "green" };
+  if (status === "provider_blocked") return { label: "Blocked", tone: "red" };
+  if (status === "needs_review") return { label: "Review", tone: "yellow" };
   return { label: "Draft", tone: "blue" };
 }

@@ -10,14 +10,14 @@ flowchart LR
   context --> minds[Official Minds client\nstable conversation alias]
   source[Source text] --> minds
   minds --> parser[Strict structured response parser]
-  parser --> proof[Campaign Proof\nX / LinkedIn / short hooks]
+  parser --> proof[Workbench outputs\nX / LinkedIn / short-video hooks]
   proof --> feedback[Creator feedback\napprove / reject / revise]
   feedback --> sqlite
-  sqlite --> canon[Creator Canon\nactive vs proposed rules]
+  sqlite --> canon[Creator rules\nactive vs proposed rules]
   sqlite --> worker[Due follow-up worker]
   worker --> minds
   worker --> telegram[Telegram Bot API\nprivate delivery only]
-  telegram --> audit[Continuity Record\nprovider IDs + failures]
+  telegram --> audit[History\nprovider IDs + failures]
   minds --> audit
   importer --> audit
 ```
@@ -30,8 +30,13 @@ flowchart LR
   revalidated and private-network targets are rejected.
 - Minds owns contextual conversation continuity. SQLite owns confirmed policies, permissions,
   provenance, campaign state, idempotency, and delivery receipts.
+- Each successful generation audit keeps the exact remembered rules, avoided angles, and any
+  provider-returned memory effects. The Workbench renders those records beside the three drafts;
+  older provider responses without effect notes are labeled as Reeti-observed effects.
 - A local record cannot prove a provider result. Provider fingerprints and Telegram message IDs
   are stored only when returned by the provider.
+- Follow-up text crosses a validation boundary before Telegram delivery: harmless paragraph markup
+  is normalized, while internal/meta leakage, unsupported markup, and oversized replies fail closed.
 - The campaign evidence packet is a local, campaign-scoped export. It includes safe identifiers,
   generated artifacts, decisions, follow-ups, and audit events, but deliberately excludes the raw
   source body.

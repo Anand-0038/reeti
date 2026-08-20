@@ -17,7 +17,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.json\" \"*.ts\" \"*.mjs\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.json\" \"*.ts\" \"*.mjs\"",
     "proof:minds": "tsx scripts/proof-minds.ts",
-    "worker": "tsx scripts/run-worker.ts",
+    "worker": "node --env-file-if-exists=.env.local --env-file-if-exists=.env --import tsx scripts/run-worker.ts",
     "db:reset": "tsx scripts/reset-db.ts"
   },
   "dependencies": {

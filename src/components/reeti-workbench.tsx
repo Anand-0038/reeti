@@ -14,21 +14,12 @@ interface ApiError {
   error?: { message?: string; details?: Record<string, unknown> };
 }
 
-interface MindsPreflight {
-  mindId: string;
-  mindName: string;
-  alias: string;
-  enabled: boolean;
-}
-
 export default function ReetiWorkbench() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [source, setSource] = useState<SourceRecord | null>(null);
   const [surface, setSurface] = useState<Surface>("proof");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [preflightBusy, setPreflightBusy] = useState(false);
-  const [mindsPreflight, setMindsPreflight] = useState<MindsPreflight | null>(null);
   const [message, setMessage] = useState<{
     text: string;
     tone: "info" | "success" | "error";
@@ -44,7 +35,11 @@ export default function ReetiWorkbench() {
     if (!response.ok || !payload.campaigns)
       throw new Error(payload.error?.message ?? "The local workspace could not be loaded.");
     setData(payload);
-    setSelectedCampaignId((current) => current ?? payload.campaigns[0]?.id ?? null);
+    setSelectedCampaignId((current) => {
+      if (current) return current;
+      const firstReady = payload.campaigns.find((campaign) => campaign.artifacts?.length);
+      return firstReady?.id ?? payload.campaigns[0]?.id ?? null;
+    });
   }, []);
 
   useEffect(() => {
@@ -89,7 +84,7 @@ export default function ReetiWorkbench() {
         await refresh();
         setSource(null);
         if (payload.campaign?.id) setSelectedCampaignId(payload.campaign.id);
-        showMessage("Campaign generated. Review the proof sheet.", "success");
+        showMessage("Campaign generated. Review the three drafts.", "success");
       } catch (error) {
         await refresh().catch(() => undefined);
         setSource(null);
@@ -109,7 +104,7 @@ export default function ReetiWorkbench() {
         if (!response.ok)
           throw new Error(payload.error?.message ?? "The policy could not be confirmed.");
         await refresh();
-        showMessage("Rule confirmed in the local Creator Canon.", "success");
+        showMessage("Rule confirmed in Creator rules.", "success");
       } catch (error) {
         showMessage(
           error instanceof Error ? error.message : "The policy could not be confirmed.",
@@ -119,67 +114,45 @@ export default function ReetiWorkbench() {
     });
   }
 
-  async function checkMinds() {
-    setPreflightBusy(true);
-    try {
-      const response = await fetch("/api/minds/preflight", { method: "POST" });
-      const payload = (await response.json()) as ApiError & { preflight?: MindsPreflight };
-      if (!response.ok || !payload.preflight) {
-        setMindsPreflight(null);
-        const missing = payload.error?.details?.missing;
-        const missingText = Array.isArray(missing) ? ` Missing: ${missing.join(", ")}.` : "";
-        throw new Error(`${payload.error?.message ?? "Minds preflight failed."}${missingText}`);
-      }
-      setMindsPreflight(payload.preflight);
-      showMessage(`Minds preflight passed · ${payload.preflight.mindName}`, "success");
-    } catch (error) {
-      setMindsPreflight(null);
-      showMessage(error instanceof Error ? error.message : "Minds preflight failed.", "error");
-    } finally {
-      setPreflightBusy(false);
-    }
-  }
-
-  const providerLabel = mindsPreflight
-    ? `Minds ready · ${mindsPreflight.mindName}`
-    : data?.provider.mindsConfigured
-      ? "Minds credentials set"
-      : "Minds needs setup";
-
   return (
     <main className="app-shell">
       <header className="topbar">
         <a className="brand" href="#workbench" aria-label="Reeti home">
           <span className="brand-mark" aria-hidden="true">
-            <span />
+            <svg viewBox="0 0 56 56" focusable="false">
+              <rect x="2" y="2" width="52" height="52" rx="14" fill="currentColor" />
+              <path
+                d="M18 43V13h10.5c6.9 0 11.5 3.8 11.5 9.1s-4.2 8.6-10.8 8.6H18"
+                fill="none"
+                stroke="var(--proof)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="3.5"
+              />
+              <path
+                d="m31 31.5 11 11.5"
+                fill="none"
+                stroke="var(--yellow)"
+                strokeLinecap="round"
+                strokeWidth="3.5"
+              />
+              <circle cx="29" cy="22.5" r="3.2" fill="var(--blue)" />
+              <path
+                d="M8 28h4M44 28h4"
+                fill="none"
+                stroke="var(--yellow)"
+                strokeLinecap="round"
+                strokeWidth="2.5"
+              />
+            </svg>
           </span>
-          <span>Reeti</span>
+          <span className="brand-name">Reeti</span>
         </a>
         <div className="topbar-context">
-          <span className="eyebrow">CONTENT OPERATIONS / LOCAL</span>
-          <div className="provider-context">
-            <span
-              className={
-                mindsPreflight || data?.provider.mindsConfigured
-                  ? "connection-pill good"
-                  : "connection-pill warning"
-              }
-            >
-              <span className="connection-dot" />
-              {providerLabel}
-            </span>
-            <button
-              type="button"
-              className="provider-check"
-              onClick={() => void checkMinds()}
-              disabled={preflightBusy}
-            >
-              {preflightBusy ? "Checking…" : "Check Minds"}
-            </button>
-          </div>
+          <span className="eyebrow">CREATOR WORKSPACE</span>
         </div>
         <a className="quiet-link" href="#continuity">
-          Continuity record <span aria-hidden="true">↗</span>
+          History <span aria-hidden="true">↗</span>
         </a>
       </header>
 
@@ -204,12 +177,13 @@ export default function ReetiWorkbench() {
       )}
 
       <div className="workbench" id="workbench">
-        <aside className="campaign-index" aria-label="Campaign index">
+        <aside className="campaign-index" aria-label="Campaigns">
           <div className="index-heading">
-            <span className="section-kicker">index</span>
-            <span className="index-count">{data?.campaigns.length ?? 0}</span>
+            <span className="section-kicker">Campaigns</span>
           </div>
-          <p className="index-copy">One source at a time. Every draft carries its decisions.</p>
+          <p className="index-copy">
+            One source becomes three drafts with their decisions attached.
+          </p>
           <button
             type="button"
             className={source && !selectedCampaign ? "index-new active" : "index-new"}
@@ -243,18 +217,22 @@ export default function ReetiWorkbench() {
                         ? "!"
                         : "·"}
                   </span>
-                  <span>
+                  <span title={campaign.source?.title ?? "Untitled source"}>
                     <strong>{campaign.source?.title ?? "Untitled source"}</strong>
-                    <small>{campaign.status.replaceAll("_", " ")}</small>
+                    <small className={`campaign-status campaign-status-${campaign.status}`}>
+                      {campaign.status === "approved"
+                        ? "Approved"
+                        : campaign.status === "needs_review"
+                          ? "Review"
+                          : campaign.status === "provider_blocked"
+                            ? "Blocked"
+                            : "Draft"}
+                    </small>
                   </span>
                 </button>
               </li>
             ))}
           </ul>
-          <div className="index-footer">
-            <span className="registration-cross">＋</span>
-            <p>Reeti keeps the working context local. No public publishing is connected.</p>
-          </div>
         </aside>
 
         <section className="work-area">
@@ -264,21 +242,21 @@ export default function ReetiWorkbench() {
               className={surface === "proof" ? "surface-tab active" : "surface-tab"}
               onClick={() => setSurface("proof")}
             >
-              <span>02</span>Campaign Proof
+              Campaign
             </button>
             <button
               type="button"
               className={surface === "canon" ? "surface-tab active" : "surface-tab"}
               onClick={() => setSurface("canon")}
             >
-              <span>03</span>Creator Canon
+              Creator rules
             </button>
             <button
               type="button"
               className={surface === "continuity" ? "surface-tab active" : "surface-tab"}
               onClick={() => setSurface("continuity")}
             >
-              <span>04</span>Continuity Record
+              History
             </button>
           </nav>
 
@@ -290,7 +268,7 @@ export default function ReetiWorkbench() {
             </div>
           ) : source ? (
             <section className="surface source-receipt" aria-labelledby="receipt-title">
-              <div className="section-kicker">source receipt / ready</div>
+              <div className="section-kicker">Source ready</div>
               <div className="receipt-grid">
                 <div>
                   <h2 id="receipt-title">{source.title}</h2>
@@ -339,15 +317,11 @@ export default function ReetiWorkbench() {
           )}
         </section>
 
-        <MemoryMargin
-          policies={data?.policies ?? []}
-          ledger={data?.ledger ?? []}
-          onConfirm={confirmPolicy}
-        />
+        <MemoryMargin campaign={selectedCampaign} policies={data?.policies ?? []} />
       </div>
 
       <footer className="app-footer">
-        <span>Reeti / local-first proofroom</span>
+        <span>Reeti / creator workspace</span>
         <span>Built for Creative Minds Jam · Content Repurposing Across Platforms</span>
         <span>Provider, deployment, and submission states stay separate.</span>
       </footer>
@@ -365,16 +339,16 @@ function CanonSurface({
   const active = data.policies.filter((policy) => policy.status === "active");
   const proposed = data.policies.filter((policy) => policy.status === "proposed");
   return (
-    <section className="surface canon-surface" aria-labelledby="canon-title">
-      <div className="section-kicker">03 / creator canon</div>
+    <section className="surface canon-surface" id="creator-rules" aria-labelledby="canon-title">
+      <div className="section-kicker">Creator rules</div>
       <div className="section-heading-row">
         <div>
-          <h2 id="canon-title">The rules behind the work.</h2>
+          <h2 id="canon-title">Rules you chose to keep.</h2>
           <p className="lede">
             A creator correction becomes a durable policy only after explicit confirmation.
           </p>
         </div>
-        <span className="proof-stamp">LOCAL POLICY STORE</span>
+        <span className="proof-stamp">LOCAL RULES</span>
       </div>
       <div className="canon-grid">
         <PolicyGroup title="Active policies" items={active} tone="blue" />

@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Your way of working, remembered.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f7fa",
-    theme_color: "#f4f7fa",
+    background_color: "#eef2f5",
+    theme_color: "#eef2f5",
     icons: [{ src: "/mark.svg", sizes: "any", type: "image/svg+xml" }],
   };
 }

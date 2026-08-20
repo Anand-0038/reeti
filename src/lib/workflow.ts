@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { followupPrompt } from "@/lib/content";
+import { followupPrompt, prepareFollowupMessage } from "@/lib/content";
 import { ReetiError } from "@/lib/errors";
 import { getProviderStatus } from "@/lib/env";
 import { getMindsGateway } from "@/lib/minds";
@@ -109,6 +109,7 @@ export async function generateCampaign(sourceId: string) {
       providerFingerprint: result.providerFingerprint,
       rememberedRules: result.result.rememberedRules,
       avoidedAngles: result.result.avoidedAngles,
+      memoryEffects: result.result.memoryEffects,
       nextReviewQuestion: result.result.nextReviewQuestion,
     });
     for (const angle of result.result.avoidedAngles) {
@@ -199,12 +200,15 @@ export function scheduleCampaignFollowup(campaignId: string, input: unknown) {
 
 export async function runDueFollowups(
   options: { manualTrigger: boolean } = { manualTrigger: false },
-): Promise<Array<{ followupId: string; status: string; deliveryId?: string; error?: string }>> {
+): Promise<
+  Array<{ followupId: string; status: string; deliveryId?: string; error?: string; code?: string }>
+> {
   const results: Array<{
     followupId: string;
     status: string;
     deliveryId?: string;
     error?: string;
+    code?: string;
   }> = [];
   for (const followup of listDueFollowups()) {
     markFollowupRunning(followup.id, options.manualTrigger);
@@ -216,7 +220,7 @@ export async function runDueFollowups(
         error,
         manualTrigger: options.manualTrigger,
       });
-      results.push({ followupId: followup.id, status: "failed", error });
+      results.push({ followupId: followup.id, status: "failed", error, code: "SOURCE_NOT_FOUND" });
       continue;
     }
     const feedback = listFeedback(campaign.id)[0];
@@ -228,7 +232,8 @@ export async function runDueFollowups(
           pendingQuestion: "Choose one next editorial decision for this campaign.",
         }),
       });
-      const delivery = await sendTelegramMessage(response.message);
+      const message = prepareFollowupMessage(response.message);
+      const delivery = await sendTelegramMessage(message);
       markFollowupResult(followup.id, { status: "sent", deliveryId: delivery.messageId });
       addAuditEvent(followup.campaignId, "FollowupExecuted", "worker", {
         manualTrigger: options.manualTrigger,
@@ -240,13 +245,18 @@ export async function runDueFollowups(
       results.push({ followupId: followup.id, status: "sent", deliveryId: delivery.messageId });
     } catch (error) {
       const message = error instanceof Error ? error.message : "The follow-up failed.";
+      const code = error instanceof ReetiError ? error.code : "FOLLOWUP_FAILED";
       markFollowupResult(followup.id, { status: "failed", error: message });
       addAuditEvent(followup.campaignId, "DeliveryFailed", "worker", {
         manualTrigger: options.manualTrigger,
-        code: error instanceof ReetiError ? error.code : "FOLLOWUP_FAILED",
+        code,
         message,
+        providerMessage:
+          error instanceof ReetiError && typeof error.details?.providerMessage === "string"
+            ? error.details.providerMessage
+            : undefined,
       });
-      results.push({ followupId: followup.id, status: "failed", error: message });
+      results.push({ followupId: followup.id, status: "failed", error: message, code });
     }
   }
   return results;

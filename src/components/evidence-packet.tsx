@@ -21,15 +21,14 @@ export default function EvidencePacket({
     <section className="evidence-panel" aria-labelledby="evidence-packet-title">
       <div className="evidence-panel-heading">
         <div>
-          <div className="section-kicker">proof / packet</div>
-          <h3 id="evidence-packet-title">One campaign, one local proof bundle.</h3>
+          <div className="section-kicker">Record</div>
+          <h3 id="evidence-packet-title">Campaign record</h3>
         </div>
-        <span className="boundary-label">LOCAL ONLY</span>
+        <span className="boundary-label">REVIEW RECORD</span>
       </div>
       <p className="evidence-intro">
-        The packet binds the source receipt, editorial decisions, follow-up state, and audit trail
-        without exporting the raw source body. It is evidence of Reeti&apos;s local record, not
-        proof of public, deployed, or submitted state.
+        Source receipt, draft status, creator decisions, and follow-up state are kept together. Raw
+        source text is not included in the download.
       </p>
 
       {busy ? (
@@ -46,14 +45,14 @@ export default function EvidencePacket({
       ) : packet ? (
         <>
           <div className="evidence-grid">
-            <EvidenceCheck label="Source receipt" value={packet.proof.sourceReceipt} tone="blue" />
+            <EvidenceCheck label="Source" value={packet.proof.sourceReceipt} tone="blue" />
             <EvidenceCheck
-              label="Generation"
+              label="Drafts"
               value={packet.proof.generation}
               tone={packet.proof.generation === "provider_blocked" ? "red" : "blue"}
             />
             <EvidenceCheck
-              label="Creator decision"
+              label="Creator review"
               value={packet.proof.creatorDecision}
               tone={packet.proof.creatorDecision === "recorded" ? "green" : "yellow"}
             />
@@ -63,26 +62,29 @@ export default function EvidencePacket({
               tone={packet.proof.followUp === "failed" ? "red" : "blue"}
             />
           </div>
-          <div className="evidence-meta">
-            <span>
-              {packet.audit.length} audit events · {packet.feedback.length} feedback records ·{" "}
-              {packet.followups.length} follow-up records
-            </span>
-            <span>Source hash {packet.source.contentHash.slice(0, 12)}…</span>
-          </div>
-          <div className="evidence-actions">
-            <span className="field-note">
-              JSON includes generated artifacts and safe identifiers; raw source text is excluded.
-            </span>
-            <button
-              type="button"
-              className="button outline"
-              onClick={onDownload}
-              disabled={downloadBusy}
-            >
-              {downloadBusy ? "Preparing download…" : "Download local evidence"}
-            </button>
-          </div>
+          <details className="evidence-details">
+            <summary>Evidence details</summary>
+            <div className="evidence-details-body">
+              <div className="evidence-meta">
+                <span>
+                  {packet.audit.length} history entries · {packet.feedback.length} feedback records
+                  · {packet.followups.length} follow-up records
+                </span>
+                <span>Source hash {packet.source.contentHash.slice(0, 12)}…</span>
+              </div>
+              <div className="evidence-actions">
+                <span className="field-note">JSON includes drafts and safe identifiers.</span>
+                <button
+                  type="button"
+                  className="button outline"
+                  onClick={onDownload}
+                  disabled={downloadBusy}
+                >
+                  {downloadBusy ? "Preparing download…" : "Download record"}
+                </button>
+              </div>
+            </div>
+          </details>
         </>
       ) : null}
     </section>
@@ -105,8 +107,24 @@ function EvidenceCheck({
       </span>
       <span>
         <strong>{label}</strong>
-        <small>{value.replaceAll("_", " ")}</small>
+        <small>{friendlyEvidenceValue(value)}</small>
       </span>
     </div>
+  );
+}
+
+function friendlyEvidenceValue(value: string): string {
+  return (
+    {
+      artifacts_recorded: "recorded",
+      provider_blocked: "blocked",
+      not_run: "not run",
+      recorded: "recorded",
+      none: "none",
+      scheduled: "scheduled",
+      executed: "executed",
+      failed: "failed",
+      mixed: "mixed",
+    }[value] ?? value.replaceAll("_", " ")
   );
 }

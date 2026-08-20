@@ -46,7 +46,7 @@ export default function SourceDesk({ busy, onSourceReady, onMessage }: SourceDes
 
   return (
     <section className="surface source-desk" aria-labelledby="source-desk-title">
-      <div className="section-kicker">01 / source desk</div>
+      <div className="section-kicker">Source</div>
       <div className="section-heading-row">
         <div>
           <h1 id="source-desk-title">What are we working from?</h1>

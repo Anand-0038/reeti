@@ -8,19 +8,22 @@ function labelForType(type: string): string {
   return type.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
+function labelForActor(actor: AuditEvent["actor"]): string {
+  return actor === "minds" ? "Minds" : actor.charAt(0).toUpperCase() + actor.slice(1);
+}
+
 export default function ContinuityRecord({ audit }: ContinuityRecordProps) {
   return (
     <section className="surface continuity-record" aria-labelledby="continuity-title">
-      <div className="section-kicker">04 / continuity record</div>
+      <div className="section-kicker">History</div>
       <div className="section-heading-row">
         <div>
-          <h2 id="continuity-title">The work has a history.</h2>
+          <h2 id="continuity-title">What changed, when.</h2>
           <p className="lede">
-            Every meaningful state change stays visible. Failures are not edited out by later
-            retries.
+            Reeti keeps the source, decisions, provider responses, and delivery record together.
           </p>
         </div>
-        <span className="proof-stamp quiet-stamp">AUDIT VIEW</span>
+        <span className="proof-stamp quiet-stamp">AUDIT TRAIL</span>
       </div>
       {audit.length === 0 ? (
         <div className="empty-state compact">
@@ -41,7 +44,7 @@ export default function ContinuityRecord({ audit }: ContinuityRecordProps) {
                       minute: "2-digit",
                     })}
                   </time>
-                  <span>{event.actor}</span>
+                  <span>{labelForActor(event.actor)}</span>
                 </div>
                 <strong>{labelForType(event.type)}</strong>
                 <p>{detailText(event)}</p>
@@ -57,14 +60,18 @@ export default function ContinuityRecord({ audit }: ContinuityRecordProps) {
 function detailText(event: AuditEvent): string {
   const detail = event.detail;
   if (typeof detail.message === "string") return detail.message;
-  if (typeof detail.code === "string") return `${detail.code} · local boundary recorded`;
+  if (typeof detail.code === "string")
+    return "The failed attempt stays visible in the local record.";
   if (typeof detail.sourceId === "string")
     return "A source receipt was created before any generation call.";
-  if (typeof detail.providerFingerprint === "string")
-    return `Provider fingerprint ${detail.providerFingerprint}`;
-  if (typeof detail.manualTrigger === "boolean")
-    return `manualTrigger=${String(detail.manualTrigger)}`;
+  if (typeof detail.messageId === "string")
+    return `Telegram delivery confirmed · ID ${detail.messageId}`;
+  if (typeof detail.manualTrigger === "boolean") {
+    return detail.manualTrigger
+      ? "A follow-up was run manually."
+      : "A follow-up was run by the scheduled worker.";
+  }
   if (typeof detail.artifactCount === "number")
-    return `${detail.artifactCount} output groups recorded for review.`;
+    return `${detail.artifactCount} adaptations ready for review.`;
   return "State recorded in the local audit log.";
 }

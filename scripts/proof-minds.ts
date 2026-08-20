@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -10,6 +10,10 @@ import { inspectPersistenceReply, persistenceProofPassed } from "@/lib/proof";
 
 const projectRoot = process.cwd();
 const scriptPath = fileURLToPath(import.meta.url);
+const dotEnvPath = join(projectRoot, ".env");
+
+loadDotEnv(dotEnvPath);
+
 const alias = process.env.MINDS_CONVERSATION_ALIAS?.trim() || "reeti-proof";
 const mindId = process.env.MINDS_MIND_ID?.trim();
 const builderApiKey = process.env.MINDS_BUILDER_API_KEY?.trim();
@@ -115,6 +119,9 @@ if (!builderApiKey || !mindId) {
 function parseSessionOutput(value: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(value) as Record<string, unknown>;
+    if (typeof parsed.session !== "string" && process.env.REETI_PROOF_SESSION) {
+      parsed.session = process.env.REETI_PROOF_SESSION;
+    }
     return parsed;
   } catch {
     return null;
@@ -122,10 +129,41 @@ function parseSessionOutput(value: string): Record<string, unknown> | null {
 }
 
 function redactSessionOutput(value: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    return parsed;
-  } catch {
-    return { outputHash: createHash("sha256").update(value).digest("hex"), exit: "non_json" };
-  }
+  const parsed = parseSessionOutput(value);
+  if (parsed) return parsed;
+
+  const replyAnalysis = inspectPersistenceReply(value);
+  return {
+    session: process.env.REETI_PROOF_SESSION,
+    outputHash: createHash("sha256").update(value).digest("hex"),
+    exit: "non_json",
+    ...replyAnalysis,
+  };
+}
+
+function loadDotEnv(path: string): void {
+  if (!existsSync(path)) return;
+
+  const raw = readFileSync(path, "utf8");
+
+  raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .forEach((line) => {
+      const parsed = /^([A-Za-z_][A-Za-z0-9_]*)(?:=(.*))?$/.exec(line);
+      if (!parsed) return;
+
+      const key = parsed[1];
+      let value = parsed[2] ?? "";
+      if (!Object.hasOwn(process.env, key)) {
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+        process.env[key] = value;
+      }
+    });
 }

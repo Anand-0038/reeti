@@ -9,6 +9,7 @@ import type {
   FeedbackKind,
   FeedbackRecord,
   FollowupRecord,
+  GenerationContext,
   LedgerEntry,
   Platform,
   PolicyRecord,
@@ -54,9 +55,51 @@ function rowToArtifact(row: Record<string, unknown>): CampaignArtifact {
   };
 }
 
-function rowToCampaign(row: Record<string, unknown>): CampaignRecord {
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function generationContextFor(campaignId: string): GenerationContext | undefined {
+  const row = getDatabase()
+    .prepare(
+      "SELECT detail_json FROM audit_events WHERE campaign_id = ? AND type = ? ORDER BY created_at DESC LIMIT 1",
+    )
+    .get(campaignId, "MindsResponseReceived") as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+
+  let detail: Record<string, unknown> = {};
+  try {
+    detail = JSON.parse(String(row.detail_json)) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+
+  const memoryEffects = Array.isArray(detail.memoryEffects)
+    ? detail.memoryEffects.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const memory = (item as { memory?: unknown }).memory;
+        const effect = (item as { effect?: unknown }).effect;
+        return typeof memory === "string" && typeof effect === "string" ? [{ memory, effect }] : [];
+      })
+    : [];
+
   return {
-    id: String(row.id),
+    rememberedRules: stringArray(detail.rememberedRules),
+    avoidedAngles: stringArray(detail.avoidedAngles),
+    memoryEffects,
+    nextReviewQuestion:
+      typeof detail.nextReviewQuestion === "string" ? detail.nextReviewQuestion : null,
+    providerFingerprint:
+      typeof detail.providerFingerprint === "string" ? detail.providerFingerprint : null,
+  };
+}
+
+function rowToCampaign(row: Record<string, unknown>): CampaignRecord {
+  const id = String(row.id);
+  return {
+    id,
     creatorId: String(row.creator_id),
     sourceId: String(row.source_id),
     status: row.status as CampaignStatus,
@@ -64,6 +107,7 @@ function rowToCampaign(row: Record<string, unknown>): CampaignRecord {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     dueAt: row.due_at ? String(row.due_at) : null,
+    generationContext: generationContextFor(id),
   };
 }
 

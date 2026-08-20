@@ -50,6 +50,20 @@ export interface CampaignRecord {
   dueAt: string | null;
   source?: SourceRecord;
   artifacts?: CampaignArtifact[];
+  generationContext?: GenerationContext;
+}
+
+export interface MemoryEffect {
+  memory: string;
+  effect: string;
+}
+
+export interface GenerationContext {
+  rememberedRules: string[];
+  avoidedAngles: string[];
+  memoryEffects: MemoryEffect[];
+  nextReviewQuestion: string | null;
+  providerFingerprint: string | null;
 }
 
 export interface FeedbackRecord {
@@ -166,5 +180,6 @@ export interface GeneratedCampaign {
   shortHooks: string[];
   rememberedRules: string[];
   avoidedAngles: string[];
+  memoryEffects: MemoryEffect[];
   nextReviewQuestion: string;
 }

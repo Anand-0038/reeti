@@ -2,7 +2,11 @@ import { createMindsClient } from "@animocabrands/minds-client-lib";
 
 import { ReetiError } from "@/lib/errors";
 import { missingMindsConfiguration, serverEnv } from "@/lib/env";
-import { generationPrompt, parseGeneratedCampaign } from "@/lib/content";
+import {
+  generationPrompt,
+  parseGeneratedCampaign,
+  structuredOutputRepairPrompt,
+} from "@/lib/content";
 import type { GeneratedCampaign, LedgerEntry, PolicyRecord, SourceRecord } from "@/lib/types";
 
 export interface MindsPreflight {
@@ -120,8 +124,44 @@ class LiveMindsGateway implements MindsGateway {
         504,
       );
     }
+
+    let parsed: ReturnType<typeof parseGeneratedCampaign>;
+    try {
+      parsed = parseGeneratedCampaign(outcome.reply.messageText);
+    } catch {
+      const repairMessage = structuredOutputRepairPrompt();
+      const repairBefore = await this.client.getLatestHistoryFingerprint(this.alias);
+      await this.client.sendMessage({ alias: this.alias, messageText: repairMessage });
+      const repaired = await this.client.waitForReply({
+        alias: this.alias,
+        timeoutMs: 120_000,
+        afterFingerprint: repairBefore,
+        sentMessageText: repairMessage,
+      });
+      if (repaired.timedOut || !repaired.reply?.messageText) {
+        throw new ReetiError(
+          "Minds returned an unstructured campaign and the JSON repair timed out.",
+          "MINDS_STRUCTURED_OUTPUT_TIMEOUT",
+          504,
+        );
+      }
+      try {
+        parsed = parseGeneratedCampaign(repaired.reply.messageText);
+      } catch {
+        throw new ReetiError(
+          "Minds returned a campaign that did not match Reeti's structured output contract.",
+          "MINDS_STRUCTURED_OUTPUT_INVALID",
+          502,
+        );
+      }
+      return {
+        result: parsed,
+        providerFingerprint: providerFingerprint(repaired.reply),
+      };
+    }
+
     return {
-      result: parseGeneratedCampaign(outcome.reply.messageText),
+      result: parsed,
       providerFingerprint: providerFingerprint(outcome.reply),
     };
   }

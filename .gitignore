@@ -6,10 +6,12 @@ coverage/
 data/*.db
 data/*.db-*
 *.tsbuildinfo
-.env
-.env.*
 !.env.example
 *.log
 .DS_Store
 playwright-report/
 test-results/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat
